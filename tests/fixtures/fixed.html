@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bluebird Bakery - order fresh bread online</title>
+  <style>body{font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem}.err{color:#a00}</style>
+</head>
+<body>
+  <h1>Bluebird Bakery</h1>
+  <h2>Today's specials</h2>
+  <img src="croissant.svg" width="120" alt="Butter croissant">
+  <img src="sourdough.svg" width="120" alt="Sourdough loaf">
+  <p>Fresh every morning. Order ahead for pickup.</p>
+  <h2>Order form</h2>
+  <form onsubmit="event.preventDefault();document.getElementById('msg').textContent='Please enter a valid email address, for example name@example.com.';">
+    <label for="name">Name</label> <input id="name" type="text" autocomplete="name">
+    <label for="email">Email</label> <input id="email" type="email" autocomplete="email" aria-describedby="msg">
+    <label>Item <select><option>Croissant</option><option>Sourdough</option></select></label>
+    <button type="submit">Place order</button>
+  </form>
+  <p id="msg" class="err" role="alert">If something is wrong with your order we will tell you here and explain how to fix it.</p>
+  <a href="https://example.com/menu">Full menu</a>
+  <a href="https://example.com/contact"><img src="phone.svg" alt="Call the bakery"></a>
+</body>
+</html>
