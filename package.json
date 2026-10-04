@@ -1,0 +1,21 @@
+{
+  "name": "accessbond",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Accessibility bounty escrow on GenLayer",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite frontend",
+    "build": "vite build frontend",
+    "preview": "vite preview frontend",
+    "cli": "node scripts/accessbond.mjs",
+    "test:contract": "cd tests/direct && python -m pytest -q"
+  },
+  "dependencies": {
+    "genlayer-js": "^1.1.8"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}

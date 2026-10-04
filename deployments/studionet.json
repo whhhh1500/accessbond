@@ -1,0 +1,35 @@
+{
+  "network": "studionet",
+  "txs": [
+    {
+      "label": "deploy",
+      "hash": "0xeb982ce7b343713303b074c70dd51587505721377512588b1d7cbc7dea411349",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-04T08:31:44.135Z"
+    },
+    {
+      "label": "create_bounty(https://whhhh1500.github.io/accessbond/d, Bluebird Bakery order page, [\"button-names\",\"doc-title\",\"form-labels\",\"heading-order\",\"html-lang\",\"img-alt\",\"link-names\",\"zoom-allowed\"], [\"Form error messages tell the user what went wrong and how to fix it (not just 'Error')\"], 180)",
+      "hash": "0x9915b19af82a0b3d45f0f2c5d3ca72b6649240d9b684fa1c478e92a5e39236cc",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-04T08:31:57.003Z"
+    }
+  ],
+  "deployer": "0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd",
+  "superseded": [
+    {
+      "contract": "0x9E91218edADa8bb0f1C98C05E0229EeDC75eE16E",
+      "deployTx": "0x6325f682034f2c6916832b2aa78d2393a5efa0257fbb8a8b45ba2d40e25421a2",
+      "why": "pre hunter-meta version"
+    },
+    {
+      "contract": "0x243Dc92F4434Edd17b1044F8240260Dbfc3580C1",
+      "deployTx": "0xfefc9488c4754928e185f3461d44279e1993fdb29a3c179e9bae96ee3d6c59b5",
+      "createTx": "0x242b4032307030a31ba4ef14632f35e8b9b9e1055c0e489cecd5ed478799c6c3",
+      "why": "web.render(mode=html) returns body only; head checks need web.get"
+    }
+  ],
+  "contract": "0x3573C38B5f2EED6dB4dBc550633c5cAF8c7634C1",
+  "deployTx": "0xeb982ce7b343713303b074c70dd51587505721377512588b1d7cbc7dea411349"
+}

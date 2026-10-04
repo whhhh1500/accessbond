@@ -16,6 +16,10 @@ Criteria come in two kinds:
   * custom criteria in natural language ("the error message explains how to
     fix the input"), judged by each validator's LLM with a yes/no verdict.
     Consensus requires the same verdicts.
+
+Front-running protection: the fixed page may carry
+<meta name="accessbond:hunter" content="0xHUNTER">. If present, only that
+address can claim (validators must agree on the value too).
 """
 
 import json
@@ -53,6 +57,10 @@ ST_CANCELLED = "CANCELLED"
 _SKIP_INPUT_TYPES = {"hidden", "submit", "button", "reset", "image"}
 
 
+# Optional anti-front-running proof: the fixed page may name the hunter that is allowed to claim.
+HUNTER_META = "accessbond:hunter"
+
+
 class _A11yScanner(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -68,6 +76,7 @@ class _A11yScanner(HTMLParser):
         self.buttons: list[dict] = []
         self.headings: list[int] = []
         self.viewport = ""
+        self.hunter = ""
         self._stack_link: list[dict] = []
         self._stack_button: list[dict] = []
         self._skip_depth = 0
@@ -83,6 +92,8 @@ class _A11yScanner(HTMLParser):
             self.in_title = True
         elif tag == "meta" and a.get("name", "").lower() == "viewport":
             self.viewport = a.get("content", "").lower().replace(" ", "")
+        elif tag == "meta" and a.get("name", "").lower() == HUNTER_META:
+            self.hunter = a.get("content", "").strip().lower()[:42]
         elif tag == "img":
             hidden = a.get("aria-hidden", "") == "true" or a.get("role", "") in ("presentation", "none")
             if not hidden:
@@ -140,6 +151,38 @@ class _A11yScanner(HTMLParser):
             self.title += data
         for s in self._stack_link + self._stack_button:
             s["text"] += data
+
+
+def _body_inner(doc: str) -> str:
+    low = doc.lower()
+    i = low.find("<body")
+    if i < 0:
+        return doc
+    j = low.find(">", i)
+    k = low.rfind("</body")
+    return doc[j + 1 : k if k > j else len(doc)]
+
+
+def merge_document(raw: str, rendered_body: str) -> str:
+    """Combine the served document's <head> (lang, title, viewport, meta tags; taken from a
+    plain GET) with the browser-rendered <body> (so JS-built pages are checked as users see
+    them). GenLayer's web.render(mode="html") returns only the body's inner HTML."""
+    rendered_body = _body_inner(rendered_body or "")
+    low = (raw or "").lower()
+    i = low.find("<body")
+    if i < 0:
+        return raw if raw.strip() else rendered_body
+    if not rendered_body.strip():
+        return raw
+    return raw[:i] + "<body>" + rendered_body + "</body></html>"
+
+
+def page_hunter(html: str) -> str:
+    """Address named by <meta name="accessbond:hunter" content="0x...">, lower-cased, or ""."""
+    p = _A11yScanner()
+    p.feed(html)
+    p.close()
+    return p.hunter
 
 
 def scan_html(html: str) -> dict:
@@ -236,6 +279,9 @@ def parse_custom_results(raw, n: int) -> list[dict]:
     results = data.get("results") if isinstance(data, dict) else data
     if not isinstance(results, list) or len(results) != n:
         raise ValueError("LLM returned wrong number of results")
+    ids = [r.get("id") if isinstance(r, dict) else None for r in results]
+    if sorted(i for i in ids if isinstance(i, int)) == list(range(1, n + 1)):
+        results = sorted(results, key=lambda r: r["id"])  # trust ids over position
     out = []
     for r in results:
         if not isinstance(r, dict) or not isinstance(r.get("pass"), bool):
@@ -316,14 +362,18 @@ class AccessBond(gl.Contract):
     # ------------------------------------------------------------------ #
     def _evaluate(self, url: str, checks: list[str], custom: list[str], context: str) -> dict:
         def leader() -> dict:
-            html = gl.nondet.web.render(url, mode="html")
-            if isinstance(html, bytes):
-                html = html.decode("utf-8", errors="replace")
-            html = str(html)
+            resp = gl.nondet.web.get(url)
+            if resp.status >= 400:
+                raise gl.vm.UserError(f"page returned HTTP {resp.status}")
+            raw = resp.body.decode("utf-8", errors="replace") if resp.body else ""
+            body = gl.nondet.web.render(url, mode="html")
+            if isinstance(body, bytes):
+                body = body.decode("utf-8", errors="replace")
+            html = merge_document(raw, str(body))
             if len(html.strip()) < 20:
                 raise gl.vm.UserError("page could not be fetched or is empty")
             all_checks = scan_html(html)
-            rep = {"checks": {k: all_checks[k] for k in checks}, "custom": []}
+            rep = {"checks": {k: all_checks[k] for k in checks}, "custom": [], "hunter": page_hunter(html)}
             if custom:
                 prompt = build_custom_prompt(url, custom, compact_html(html), context)
                 raw = gl.nondet.exec_prompt(prompt, response_format="json")
@@ -342,7 +392,7 @@ class AccessBond(gl.Contract):
             try:
                 mine = leader()
                 theirs = leader_res.calldata
-                return flags(mine) == flags(theirs)
+                return flags(mine) == flags(theirs) and mine.get("hunter", "") == theirs.get("hunter", "")
             except Exception:
                 return False
 
@@ -405,6 +455,9 @@ class AccessBond(gl.Contract):
         if gl.message.sender_address == b.sponsor:
             raise gl.vm.UserError("the sponsor cannot claim their own bounty")
         report = self._evaluate(b.url, json.loads(b.checks), json.loads(b.custom), "")
+        named = report.get("hunter", "")
+        if named and named != gl.message.sender_address.as_hex.lower():
+            raise gl.vm.UserError("the page names a different hunter in <meta name=accessbond:hunter>")
         b.attempts += u256(1)
         net = self._apply_evaluation(b, report)
         if net == 0:

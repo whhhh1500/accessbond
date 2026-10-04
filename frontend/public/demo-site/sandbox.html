@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title></title>
+  <style>body{font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem}.err{color:#d33}</style>
+</head>
+<body>
+  <h1>Bluebird Bakery</h1>
+  <h3>Today's specials</h3>
+  <img src="croissant.svg" width="120">
+  <img src="sourdough.svg" width="120">
+  <p>Fresh every morning. Order ahead for pickup.</p>
+  <h1>Order form</h1>
+  <form onsubmit="event.preventDefault();document.getElementById('msg').textContent='Error';">
+    <input type="text" placeholder="Name">
+    <input type="email" placeholder="Email">
+    <select><option>Croissant</option><option>Sourdough</option></select>
+    <button></button>
+  </form>
+  <p id="msg" class="err"></p>
+  <a href="https://example.com/menu"></a>
+  <a href="https://example.com/contact"><img src="phone.svg"></a>
+</body>
+</html>

@@ -211,3 +211,21 @@ def test_list_bounties(direct_vm, bond, serve, direct_alice):
     create(direct_vm, bond, direct_alice, checks=["img-alt"])
     rows = bond.list_bounties()
     assert [r["id"] for r in rows] == [0, 1] and rows[1]["checks"] == ["img-alt"]
+
+
+def test_hunter_meta_blocks_front_running(direct_vm, bond, serve, direct_alice, direct_bob, direct_charlie):
+    serve("broken")
+    bid = create(direct_vm, bond, direct_alice)
+    page = __import__("conftest").html("fixed").replace(
+        "<head>", f'<head><meta name="accessbond:hunter" content="{_hex(direct_bob)}">'
+    )
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r"bakery\.example", {"status": 200, "body": page})
+    direct_vm.sender = direct_charlie  # watcher who did not do the work
+    with direct_vm.expect_revert("names a different hunter"):
+        bond.submit_fix(bid, "mine!")
+    direct_vm.sender = direct_bob
+    bond.submit_fix(bid, "it was me")
+    b = bond.get_bounty(bid)
+    assert b["status"] == "REVIEW" and b["hunter"].lower() == _hex(direct_bob)
+    assert b["report"]["hunter"] == _hex(direct_bob)
