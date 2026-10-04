@@ -1,6 +1,6 @@
 import { createClient, createAccount, generatePrivateKey } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
-import { TransactionStatus } from "genlayer-js/types";
+import { TransactionStatus, transactionsStatusNumberToName } from "genlayer-js/types";
 import deployment from "../../deployments/studionet.json";
 import "./style.css";
 
@@ -68,13 +68,13 @@ async function useBurner() {
   }
   const acc = createAccount(pk);
   account = { address: acc.address, kind: "demo account", client: createClient({ chain: studionet, account: acc }) };
-  renderAccount();
   const bal = big(await rpc("eth_getBalance", [acc.address, "latest"]));
   if (bal < 5n * GEN) {
     log("Funding demo account from the Studio faucet (test GEN)…");
     await rpc("sim_fundAccount", [acc.address, Number(20n * GEN)]);
   }
-  renderAccount();
+  await renderAccount();
+  if (selected != null) renderDetail(bounties.find((b) => Number(b.id) === selected));
 }
 
 async function useWallet() {
@@ -83,7 +83,8 @@ async function useWallet() {
   const client = createClient({ chain: studionet, account: address, provider: window.ethereum });
   try { await client.connect("studionet"); } catch (e) { log(`Wallet network switch: ${e.message || e}`, null, "warn"); }
   account = { address, kind: "browser wallet", client };
-  renderAccount();
+  await renderAccount();
+  if (selected != null) renderDetail(bounties.find((b) => Number(b.id) === selected));
 }
 
 async function renderAccount() {
@@ -116,7 +117,7 @@ async function send(label, functionName, args, value = 0n) {
     const ok = lr?.execution_result === "SUCCESS" && (lr?.result?.status ?? "return") === "return";
     const why = lr?.result?.payload?.readable || lr?.genvm_result?.stderr || lr?.execution_result || "unknown";
     item.className = ok ? "ok" : "err";
-    item.replaceChildren(el("time", {}, new Date().toLocaleTimeString()), ` ${label}: ${receipt.statusName || receipt.status} · ${ok ? "executed" : "reverted: " + String(why).replace(/^"|"$/g, "")} `, txLink(hash));
+    item.replaceChildren(el("time", {}, new Date().toLocaleTimeString()), ` ${label}: ${receipt.statusName || transactionsStatusNumberToName[String(receipt.status)] || receipt.status} · ${ok ? "executed" : "reverted: " + String(why).replace(/^"|"$/g, "")} `, txLink(hash));
     await refresh();
     renderAccount();
     return ok;
@@ -232,7 +233,11 @@ $("#create").addEventListener("submit", async (ev) => {
   const custom = ["c1", "c2", "c3"].map((k) => f.get(k).trim()).filter(Boolean);
   const reward = BigInt(Math.round(Number(f.get("reward")) * 100)) * (GEN / 100n);
   const ok = await send(`create_bounty "${f.get("title")}"`, "create_bounty", [f.get("url"), f.get("title"), checks, custom, BigInt(f.get("window"))], reward);
-  if (ok) { selected = Number(bounties[0]?.id); renderList(); renderDetail(bounties[0]); }
+  if (ok) {
+    const me = account.address.toLowerCase();
+    const mine = bounties.filter((b) => b.sponsor.toLowerCase() === me).sort((a, b) => Number(b.id) - Number(a.id))[0];
+    if (mine) { selected = Number(mine.id); renderList(); renderDetail(mine); $("#detail-wrap").scrollIntoView({ behavior: "smooth" }); }
+  }
 });
 $("#use-sandbox").addEventListener("click", () => {
   const f = $("#create");
