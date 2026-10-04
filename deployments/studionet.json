@@ -28,6 +28,20 @@
       "status": "5",
       "execution": "SUCCESS",
       "at": "2026-10-04T08:40:52.532Z"
+    },
+    {
+      "label": "finalize(0)",
+      "hash": "0xf9713bb57ba140977d456541a5bf1334a05c4212ad3617d1d43ea61c7a2c5a37",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-04T08:41:07.157Z"
+    },
+    {
+      "label": "submit_fix(1, Set lang=en, added a real title and alt )",
+      "hash": "0x5413b8f6c62600f48399b3db0599c4faa5df5ffbc32a6be513743a6d18b42695",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-04T08:41:53.980Z"
     }
   ],
   "deployer": "0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd",
