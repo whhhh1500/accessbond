@@ -115,7 +115,8 @@ async function send(label, functionName, args, value = 0n) {
     const receipt = await account.client.waitForTransactionReceipt({ hash, status: TransactionStatus.ACCEPTED, retries: 200, interval: 3000 });
     const lr = Array.isArray(receipt?.consensus_data?.leader_receipt) ? receipt.consensus_data.leader_receipt[0] : receipt?.consensus_data?.leader_receipt;
     const ok = lr?.execution_result === "SUCCESS" && (lr?.result?.status ?? "return") === "return";
-    const why = lr?.result?.payload?.readable || lr?.genvm_result?.stderr || lr?.execution_result || "unknown";
+    const pl = lr?.result?.payload;
+    const why = (typeof pl === "string" ? pl : pl?.readable) || lr?.genvm_result?.error_description || lr?.genvm_result?.stderr || lr?.execution_result || "unknown";
     item.className = ok ? "ok" : "err";
     item.replaceChildren(el("time", {}, new Date().toLocaleTimeString()), ` ${label}: ${receipt.statusName || transactionsStatusNumberToName[String(receipt.status)] || receipt.status} · ${ok ? "executed" : "reverted: " + String(why).replace(/^"|"$/g, "")} `, txLink(hash));
     await refresh();
