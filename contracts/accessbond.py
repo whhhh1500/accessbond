@@ -17,6 +17,10 @@ Criteria come in two kinds:
     fix the input"), judged by each validator's LLM with a yes/no verdict.
     Consensus requires the same verdicts.
 
+The current hunter may call `submit_fix` again while the claim is in review
+(and not disputed) to have an improved page re-evaluated; this restarts the
+challenge window.
+
 Front-running protection: the fixed page may carry
 <meta name="accessbond:hunter" content="0xHUNTER">. If present, only that
 address can claim (validators must agree on the value too).
@@ -161,6 +165,12 @@ def _body_inner(doc: str) -> str:
     j = low.find(">", i)
     k = low.rfind("</body")
     return doc[j + 1 : k if k > j else len(doc)]
+
+
+def cache_busted(url: str, ts: int) -> str:
+    base, frag = (url.split("#", 1) + [""])[:2]
+    sep = "&" if "?" in base else "?"
+    return f"{base}{sep}accessbond_ts={ts}" + (f"#{frag}" if frag else "")
 
 
 def merge_document(raw: str, rendered_body: str) -> str:
@@ -361,12 +371,16 @@ class AccessBond(gl.Contract):
     # non-deterministic evaluation                                       #
     # ------------------------------------------------------------------ #
     def _evaluate(self, url: str, checks: list[str], custom: list[str], context: str) -> dict:
+        ts = _now()
+
         def leader() -> dict:
             resp = gl.nondet.web.get(url)
             if resp.status >= 400:
                 raise gl.vm.UserError(f"page returned HTTP {resp.status}")
             raw = resp.body.decode("utf-8", errors="replace") if resp.body else ""
-            body = gl.nondet.web.render(url, mode="html")
+            # Browsers honour Cache-Control, so a just-deployed fix could be rendered from a
+            # stale cache while the GET is fresh. Bust the cache with the (shared) tx time.
+            body = gl.nondet.web.render(cache_busted(url, ts), mode="html")
             if isinstance(body, bytes):
                 body = body.decode("utf-8", errors="replace")
             html = merge_document(raw, str(body))
@@ -450,7 +464,8 @@ class AccessBond(gl.Contract):
     @gl.public.write
     def submit_fix(self, bounty_id: int, note: str) -> None:
         b = self._get(bounty_id)
-        if b.status != ST_OPEN:
+        refresh = b.status == ST_REVIEW and gl.message.sender_address == b.hunter and not b.disputed
+        if b.status != ST_OPEN and not refresh:
             raise gl.vm.UserError(f"bounty is {b.status}, not OPEN")
         if gl.message.sender_address == b.sponsor:
             raise gl.vm.UserError("the sponsor cannot claim their own bounty")
@@ -458,10 +473,12 @@ class AccessBond(gl.Contract):
         named = report.get("hunter", "")
         if named and named != gl.message.sender_address.as_hex.lower():
             raise gl.vm.UserError("the page names a different hunter in <meta name=accessbond:hunter>")
-        b.attempts += u256(1)
-        net = self._apply_evaluation(b, report)
-        if net == 0:
+        _, fixed, regressions = score(json.loads(b.baseline), report)
+        if fixed - regressions <= 0:
+            # checked before any state change so a failed attempt never touches an existing claim
             raise gl.vm.UserError("no targeted criterion is fixed yet (or fixes are offset by regressions)")
+        b.attempts += u256(1)
+        self._apply_evaluation(b, report)
         b.status = ST_REVIEW
         b.hunter = gl.message.sender_address
         b.hunter_note = note[:280]

@@ -1,27 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8">
-  <meta name="accessbond:hunter" content="0x1fd9471d5292ce68748d395a0aa127dd4d0b099d">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bluebird Bakery - order fresh bread online</title>
-  <style>body{font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem}.err{color:#a00}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title></title>
+  <style>body{font-family:sans-serif;max-width:720px;margin:2rem auto;padding:0 1rem}.err{color:#d33}</style>
 </head>
 <body>
   <h1>Bluebird Bakery</h1>
-  <h2>Today's specials</h2>
-  <img src="croissant.svg" width="120" alt="Butter croissant">
-  <img src="sourdough.svg" width="120" alt="Sourdough loaf">
+  <h3>Today's specials</h3>
+  <img src="croissant.svg" width="120">
+  <img src="sourdough.svg" width="120">
   <p>Fresh every morning. Order ahead for pickup.</p>
-  <h2>Order form</h2>
-  <form onsubmit="event.preventDefault();document.getElementById('msg').textContent='Please enter a valid email address, for example name@example.com.';">
-    <label for="name">Name</label> <input id="name" type="text" autocomplete="name">
-    <label for="email">Email</label> <input id="email" type="email" autocomplete="email" aria-describedby="msg">
-    <label>Item <select><option>Croissant</option><option>Sourdough</option></select></label>
-    <button type="submit">Place order</button>
+  <h1>Order form</h1>
+  <form onsubmit="event.preventDefault();document.getElementById('msg').textContent='Error';">
+    <input type="text" placeholder="Name">
+    <input type="email" placeholder="Email">
+    <select><option>Croissant</option><option>Sourdough</option></select>
+    <button></button>
   </form>
-  <p id="msg" class="err" role="alert">Example of our error messages: "The email address needs an @ sign. Please enter it like name@example.com."</p>
-  <a href="https://example.com/menu">Full menu</a>
-  <a href="https://example.com/contact"><img src="phone.svg" alt="Call the bakery"></a>
+  <p id="msg" class="err"></p>
+  <a href="https://example.com/menu"></a>
+  <a href="https://example.com/contact"><img src="phone.svg"></a>
 </body>
 </html>

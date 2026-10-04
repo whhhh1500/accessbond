@@ -172,3 +172,8 @@ def test_compact_html_strips_noise_and_truncates(ab):
     big = "<html><head><style>x{}</style><script>evil()</script></head><body>" + "<p>a</p>" * 5000 + "</body></html>"
     out = ab.compact_html(big)
     assert "evil" not in out and len(out) <= ab.MAX_LLM_HTML + 50
+
+
+def test_cache_busted(ab):
+    assert ab.cache_busted("https://a.b/x", 7) == "https://a.b/x?accessbond_ts=7"
+    assert ab.cache_busted("https://a.b/x?q=1#top", 7) == "https://a.b/x?q=1&accessbond_ts=7#top"

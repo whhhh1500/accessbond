@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AccessBond - accessibility bounties judged by GenLayer validators</title>
+  <meta name="description" content="Escrow GEN for real accessibility fixes. GenLayer validators fetch the live page, check WCAG criteria and judge custom requirements with LLMs.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♿</text></svg>">
+  <script type="module" crossorigin src="/accessbond/assets/index-DBQdUVj3.js"></script>
+  <link rel="stylesheet" crossorigin href="/accessbond/assets/index-CaZ1aFk2.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">♿</span>
+      <div>
+        <h1>AccessBond</h1>
+        <p class="tag">Accessibility bounties, paid only when GenLayer validators see the fix live.</p>
+      </div>
+    </div>
+    <div class="acct" id="acct" aria-live="polite"></div>
+  </header>
+
+  <main id="main">
+    <section class="how" aria-labelledby="how-h">
+      <h2 id="how-h" class="sr-only">How it works</h2>
+      <ol class="steps">
+        <li><strong>Sponsor</strong> escrows GEN and picks criteria for a public URL. Validators fetch the page and record what fails today.</li>
+        <li><strong>Hunter</strong> fixes the site and claims. Validators re-fetch, re-check, and agree on a pro-rata payout (fixed − regressions).</li>
+        <li><strong>Sponsor</strong> may dispute once in the challenge window: an independent re-evaluation that weighs the sponsor's reason.</li>
+        <li><strong>Anyone</strong> finalizes: hunter is paid, the rest is refunded to the sponsor.</li>
+      </ol>
+    </section>
+
+    <section class="stats" id="stats" aria-label="Contract statistics"></section>
+
+    <div class="grid">
+      <section aria-labelledby="list-h">
+        <div class="row">
+          <h2 id="list-h">Bounties</h2>
+          <button class="ghost" id="refresh" type="button">Refresh</button>
+        </div>
+        <div id="list" class="list" aria-live="polite"><p class="muted">Loading from GenLayer Studio…</p></div>
+      </section>
+
+      <section aria-labelledby="detail-h" id="detail-wrap">
+        <h2 id="detail-h">Details</h2>
+        <div id="detail"><p class="muted">Select a bounty.</p></div>
+      </section>
+    </div>
+
+    <section aria-labelledby="create-h" class="card">
+      <h2 id="create-h">Create a bounty</h2>
+      <form id="create">
+        <div class="two">
+          <label>Page URL
+            <input name="url" type="url" required placeholder="https://example.com/checkout">
+          </label>
+          <label>Title
+            <input name="title" required maxlength="120" placeholder="Make our checkout accessible">
+          </label>
+        </div>
+        <p class="hint">Try the sandbox page: <button class="link" type="button" id="use-sandbox">use demo-site/sandbox.html</button> (it stays broken, so you can test create → cancel).</p>
+        <fieldset>
+          <legend>Deterministic checks (computed by every validator from the page HTML)</legend>
+          <div id="catalog" class="catalog"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Custom criteria (judged by each validator's LLM; up to 3)</legend>
+          <label class="sr-only" for="c1">Custom criterion 1</label>
+          <input id="c1" name="c1" maxlength="200" placeholder="e.g. Form errors explain how to fix the input">
+          <label class="sr-only" for="c2">Custom criterion 2</label>
+          <input id="c2" name="c2" maxlength="200" placeholder="optional">
+          <label class="sr-only" for="c3">Custom criterion 3</label>
+          <input id="c3" name="c3" maxlength="200" placeholder="optional">
+        </fieldset>
+        <div class="two">
+          <label>Reward (GEN, escrowed)
+            <input name="reward" type="number" min="0.01" step="0.01" value="1" required>
+          </label>
+          <label>Challenge window (seconds)
+            <input name="window" type="number" min="0" max="604800" value="120" required>
+          </label>
+        </div>
+        <button type="submit" class="primary">Escrow &amp; create</button>
+      </form>
+    </section>
+
+    <section aria-labelledby="log-h" class="card">
+      <h2 id="log-h">Transaction log</h2>
+      <ol id="log" class="log" aria-live="polite"></ol>
+    </section>
+  </main>
+
+  <footer>
+    <p>Contract <a id="contract-link" href="#" rel="noopener"></a> on GenLayer Studio (studionet, test GEN only) ·
+      <a href="https://github.com/whhhh1500/accessbond" rel="noopener">source</a> ·
+      the demo bakery page: <a href="demo-site/" rel="noopener">demo-site/</a></p>
+  </footer>
+</body>
+</html>

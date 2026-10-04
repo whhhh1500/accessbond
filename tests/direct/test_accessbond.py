@@ -229,3 +229,27 @@ def test_hunter_meta_blocks_front_running(direct_vm, bond, serve, direct_alice, 
     b = bond.get_bounty(bid)
     assert b["status"] == "REVIEW" and b["hunter"].lower() == _hex(direct_bob)
     assert b["report"]["hunter"] == _hex(direct_bob)
+
+
+def test_hunter_can_refresh_claim_but_others_cannot(direct_vm, bond, serve, direct_alice, direct_bob, direct_charlie):
+    serve("broken")
+    direct_vm.warp("2026-10-04T08:00:00Z")
+    bid = create(direct_vm, bond, direct_alice, reward=8 * GEN, window=600)
+    serve("partial")
+    direct_vm.sender = direct_bob
+    bond.submit_fix(bid, "first pass")
+    assert bond.get_bounty(bid)["payout"] == 3 * GEN
+    direct_vm.sender = direct_charlie
+    with direct_vm.expect_revert("not OPEN"):
+        bond.submit_fix(bid, "steal")
+    serve("fixed")
+    direct_vm.warp("2026-10-04T08:05:00Z")
+    direct_vm.sender = direct_bob
+    bond.submit_fix(bid, "finished the rest")
+    b = bond.get_bounty(bid)
+    assert b["status"] == "REVIEW" and b["fixed"] == 8 and b["payout"] == 8 * GEN and b["attempts"] == 2
+    assert b["window_end"] == b["claimed_at"] + 600  # window restarted
+    serve("broken")  # a worse page on refresh must not wipe the existing claim
+    with direct_vm.expect_revert("no targeted criterion"):
+        bond.submit_fix(bid, "oops")
+    assert bond.get_bounty(bid)["payout"] == 8 * GEN
