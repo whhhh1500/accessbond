@@ -21,6 +21,34 @@
       "status": "5",
       "execution": "SUCCESS",
       "at": "2026-10-11T14:56:22.110Z"
+    },
+    {
+      "label": "submit_fix(0, Added lang, a real title, alt text and l)",
+      "hash": "0x7ce8e47044578893399ebe5517d1fa32292fb82fd31ded7b06476eced40c58b3",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T14:57:34.633Z"
+    },
+    {
+      "label": "submit_fix(1, Same fixes on the catering page)",
+      "hash": "0xed65093c499813c248cded6148f52813f764ef1de26d642c20a546c79e4f90de",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T14:57:46.228Z"
+    },
+    {
+      "label": "finalize(0)",
+      "hash": "0xa8e7aa9587bb593a37b033e501bea06e12cf841267ee9341d47df9678136797e",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T14:57:58.848Z"
+    },
+    {
+      "label": "finalize(1)",
+      "hash": "0x2ab7711082ef2c7e28882af1ebe84c113523131a5c8d6a856027cb1a65acd9a5",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T14:58:07.558Z"
     }
   ],
   "deployer": "0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd",
