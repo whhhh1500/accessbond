@@ -17,6 +17,15 @@ Criteria come in two kinds:
     fix the input"), judged by each validator's LLM with a yes/no verdict.
     Consensus requires the same verdicts.
 
+Fix warranty (v0.2): a sponsor may hold back part of the payout (holdback_bps) for a
+warranty period. `finalize` then pays the hunter the rest and the bounty enters WARRANTY.
+During and after the warranty period anyone can call `check_warranty`: validators re-fetch
+the live page and re-check exactly the criteria the hunter was paid for. A relapse (a paid
+criterion failing again) opens a cure period; if the page is fixed again before the cure
+deadline the relapse is cleared, otherwise the held-back share of the relapsed criteria is
+refunded to the sponsor. When the warranty period is over and no relapse is outstanding, the
+remaining holdback is released to the hunter. Every check is kept in an on-chain log.
+
 The current hunter may call `submit_fix` again while the claim is in review
 (and not disputed) to have an improved page re-evaluated; this restarts the
 challenge window.
@@ -47,11 +56,17 @@ MAX_CUSTOM = 3
 MAX_CUSTOM_LEN = 200
 MAX_LLM_HTML = 12000
 MAX_CHALLENGE_SECS = 7 * 24 * 3600
+MAX_WARRANTY_SECS = 90 * 24 * 3600
+MAX_HOLDBACK_BPS = 9000
+MIN_CURE_SECS = 60
+MAX_CURE_SECS = 3 * 24 * 3600
+MAX_WARRANTY_LOG = 12
 ZERO = Address(b"\x00" * 20)
 
 ST_OPEN = "OPEN"
 ST_REVIEW = "REVIEW"
 ST_PAID = "PAID"
+ST_WARRANTY = "WARRANTY"
 ST_CANCELLED = "CANCELLED"
 
 
@@ -305,6 +320,42 @@ def flags(report: dict) -> list[bool]:
     return [report["checks"][k]["pass"] for k in sorted(report["checks"])] + [c["pass"] for c in report["custom"]]
 
 
+def credited_indices(baseline: dict, accepted: dict) -> list[int]:
+    """Indices (in flags() order) of criteria the hunter was paid for: failing at baseline,
+    passing in the accepted report."""
+    b, a = flags(baseline), flags(accepted)
+    return [i for i, (x, y) in enumerate(zip(b, a)) if not x and y]
+
+
+def relapsed_indices(credited: list[int], current: dict) -> list[int]:
+    c = flags(current)
+    return [i for i in credited if i < len(c) and not c[i]]
+
+
+def flag_names(report: dict) -> list[str]:
+    return sorted(report["checks"]) + [f"custom #{i + 1}" for i in range(len(report["custom"]))]
+
+
+def cure_period(warranty_secs: int) -> int:
+    """Time a hunter gets to restore a relapsed fix: a quarter of the warranty, clamped."""
+    return max(MIN_CURE_SECS, min(MAX_CURE_SECS, warranty_secs // 4))
+
+
+def holdback_split(payout: int, holdback_bps: int) -> tuple[int, int]:
+    """(paid now, held back) for a finalized payout."""
+    held = payout * holdback_bps // 10000
+    return payout - held, held
+
+
+def forfeit_amount(retained: int, n_relapsed: int, n_credited: int) -> int:
+    """Share of the remaining holdback that belongs to the relapsed criteria."""
+    if n_credited <= 0 or n_relapsed <= 0:
+        return 0
+    if n_relapsed >= n_credited:
+        return retained
+    return retained * n_relapsed // n_credited
+
+
 def score(baseline: dict, current: dict) -> tuple[int, int, int]:
     """Return (targets, fixed, regressions)."""
     b, c = flags(baseline), flags(current)
@@ -350,6 +401,16 @@ class Bounty:
     disputed: bool
     dispute_reason: str
     attempts: u256
+    holdback_bps: u256
+    warranty_secs: u256
+    retained: u256  # GEN still held back for the warranty
+    warranty_end: u256
+    credited: str  # JSON list of flag indices the hunter was paid for (still under warranty)
+    relapsed: str  # JSON list of credited indices currently failing
+    cure_deadline: u256  # 0 = no relapse outstanding
+    strikes: u256
+    forfeited: u256
+    warranty_log: str  # JSON list of recent checks
 
 
 def _now() -> int:
@@ -361,11 +422,13 @@ class AccessBond(gl.Contract):
     count: u256
     total_escrowed: u256
     total_paid: u256
+    total_refunded: u256
 
     def __init__(self) -> None:
         self.count = u256(0)
         self.total_escrowed = u256(0)
         self.total_paid = u256(0)
+        self.total_refunded = u256(0)
 
     # ------------------------------------------------------------------ #
     # non-deterministic evaluation                                       #
@@ -416,7 +479,8 @@ class AccessBond(gl.Contract):
     # writes                                                             #
     # ------------------------------------------------------------------ #
     @gl.public.write.payable
-    def create_bounty(self, url: str, title: str, checks: list[str], custom: list[str], challenge_secs: int) -> int:
+    def create_bounty(self, url: str, title: str, checks: list[str], custom: list[str], challenge_secs: int,
+                      holdback_bps: int, warranty_secs: int) -> int:
         reward = gl.message.value
         if reward == u256(0):
             raise gl.vm.UserError("escrow some GEN as the reward")
@@ -433,6 +497,12 @@ class AccessBond(gl.Contract):
             raise gl.vm.UserError("select at least one criterion")
         if challenge_secs < 0 or challenge_secs > MAX_CHALLENGE_SECS:
             raise gl.vm.UserError("challenge window must be 0..7 days")
+        if holdback_bps < 0 or holdback_bps > MAX_HOLDBACK_BPS:
+            raise gl.vm.UserError(f"holdback must be 0..{MAX_HOLDBACK_BPS} bps")
+        if warranty_secs < 0 or warranty_secs > MAX_WARRANTY_SECS:
+            raise gl.vm.UserError("warranty period must be 0..90 days")
+        if (holdback_bps > 0) != (warranty_secs > 0):
+            raise gl.vm.UserError("set both a holdback and a warranty period, or neither")
 
         baseline = self._evaluate(url, checks, custom, "")
         targets = sum(1 for x in flags(baseline) if not x)
@@ -446,6 +516,9 @@ class AccessBond(gl.Contract):
             targets=u256(targets), hunter=ZERO, hunter_note="", report="", fixed=u256(0), regressions=u256(0),
             payout=u256(0), created_at=u256(_now()), claimed_at=u256(0), challenge_secs=u256(challenge_secs),
             disputed=False, dispute_reason="", attempts=u256(0),
+            holdback_bps=u256(holdback_bps), warranty_secs=u256(warranty_secs), retained=u256(0),
+            warranty_end=u256(0), credited="[]", relapsed="[]", cure_deadline=u256(0), strikes=u256(0),
+            forfeited=u256(0), warranty_log="[]",
         )
         self.count = bid + u256(1)
         self.total_escrowed += reward
@@ -518,12 +591,85 @@ class AccessBond(gl.Contract):
             raise gl.vm.UserError("challenge window still open")
         payout = b.payout
         refund = b.reward - payout
-        b.status = ST_PAID
-        self.total_paid += payout
-        if payout > u256(0):
-            _Recipient(b.hunter).emit_transfer(value=payout)
+        pay_now, held = holdback_split(int(payout), int(b.holdback_bps))
+        if held > 0:
+            b.status = ST_WARRANTY
+            b.retained = u256(held)
+            b.warranty_end = u256(_now() + int(b.warranty_secs))
+            b.credited = json.dumps(credited_indices(json.loads(b.baseline), json.loads(b.report)))
+        else:
+            b.status = ST_PAID
+        self.total_paid += u256(pay_now)
+        self.total_refunded += refund
+        if pay_now > 0:
+            _Recipient(b.hunter).emit_transfer(value=u256(pay_now))
         if refund > u256(0):
             _Recipient(b.sponsor).emit_transfer(value=refund)
+
+    @gl.public.write
+    def check_warranty(self, bounty_id: int) -> str:
+        """Anyone: re-check the paid criteria on the live page. Returns the outcome."""
+        b = self._get(bounty_id)
+        if b.status != ST_WARRANTY:
+            raise gl.vm.UserError(f"bounty is {b.status}, not under warranty")
+        report = self._evaluate(b.url, json.loads(b.checks), json.loads(b.custom), "")
+        now = _now()
+        credited = json.loads(b.credited)
+        relapsed = relapsed_indices(credited, report)
+        names = flag_names(report)
+        seen = [names[i] for i in relapsed if i < len(names)]
+        release = 0
+        forfeit = 0
+        close = False
+        if relapsed:
+            if int(b.cure_deadline) == 0:
+                b.cure_deadline = u256(now + cure_period(int(b.warranty_secs)))
+                b.strikes += u256(1)
+                outcome = "relapse"
+            elif now >= int(b.cure_deadline):
+                forfeit = forfeit_amount(int(b.retained), len(relapsed), len(credited))
+                credited = [i for i in credited if i not in relapsed]
+                b.credited = json.dumps(credited)
+                b.retained = u256(int(b.retained) - forfeit)
+                b.forfeited += u256(forfeit)
+                b.cure_deadline = u256(0)
+                relapsed = []
+                outcome = "forfeit"
+                if not credited:
+                    forfeit += int(b.retained)  # nothing left under warranty; return any rounding dust
+                    b.forfeited += b.retained
+                    b.retained = u256(0)
+                    close = True
+                elif now >= int(b.warranty_end):
+                    release = int(b.retained)
+                    close = True
+                    outcome = "forfeit+released"
+            else:
+                outcome = "still-relapsed"
+        else:
+            outcome = "cured" if int(b.cure_deadline) else "ok"
+            b.cure_deadline = u256(0)
+            if now >= int(b.warranty_end):
+                release = int(b.retained)
+                close = True
+                outcome = "released"
+        b.relapsed = json.dumps(relapsed)
+        if close:
+            b.retained = u256(0)
+            b.status = ST_PAID
+        log = json.loads(b.warranty_log)
+        log.append({"at": now, "by": gl.message.sender_address.as_hex, "outcome": outcome,
+                    "relapsed": seen,
+                    "forfeit": forfeit, "released": release})
+        b.warranty_log = json.dumps(log[-MAX_WARRANTY_LOG:])
+        b.report = json.dumps(report)
+        if forfeit > 0:
+            self.total_refunded += u256(forfeit)
+            _Recipient(b.sponsor).emit_transfer(value=u256(forfeit))
+        if release > 0:
+            self.total_paid += u256(release)
+            _Recipient(b.hunter).emit_transfer(value=u256(release))
+        return outcome
 
     @gl.public.write
     def cancel(self, bounty_id: int) -> None:
@@ -533,6 +679,7 @@ class AccessBond(gl.Contract):
         if b.status != ST_OPEN:
             raise gl.vm.UserError("only OPEN bounties can be cancelled")
         b.status = ST_CANCELLED
+        self.total_refunded += b.reward
         _Recipient(b.sponsor).emit_transfer(value=b.reward)
 
     # ------------------------------------------------------------------ #
@@ -555,6 +702,11 @@ class AccessBond(gl.Contract):
             "regressions": int(b.regressions), "payout": int(b.payout), "created_at": int(b.created_at),
             "claimed_at": int(b.claimed_at), "challenge_secs": int(b.challenge_secs), "window_end": window_end,
             "disputed": b.disputed, "dispute_reason": b.dispute_reason, "attempts": int(b.attempts),
+            "holdback_bps": int(b.holdback_bps), "warranty_secs": int(b.warranty_secs),
+            "cure_secs": cure_period(int(b.warranty_secs)) if int(b.warranty_secs) else 0,
+            "retained": int(b.retained), "warranty_end": int(b.warranty_end), "credited": json.loads(b.credited),
+            "relapsed": json.loads(b.relapsed), "cure_deadline": int(b.cure_deadline), "strikes": int(b.strikes),
+            "forfeited": int(b.forfeited), "warranty_log": json.loads(b.warranty_log),
         }
 
     @gl.public.view
@@ -571,5 +723,6 @@ class AccessBond(gl.Contract):
 
     @gl.public.view
     def get_stats(self) -> dict:
+        held = int(self.total_escrowed) - int(self.total_paid) - int(self.total_refunded)
         return {"count": int(self.count), "total_escrowed": int(self.total_escrowed),
-                "total_paid": int(self.total_paid)}
+                "total_paid": int(self.total_paid), "total_refunded": int(self.total_refunded), "held": held}

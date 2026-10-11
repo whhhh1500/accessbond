@@ -50,3 +50,4 @@ button.link { background:none; border:0; color:var(--acc); text-decoration:under
 .log .ok { color:var(--ok); } .log .err { color:var(--bad); } .log .warn { color:var(--warn); }
 footer { text-align:center; color:var(--muted); padding:1rem; border-top:1px solid var(--line); font-size:.9rem; }
 .err { color:var(--bad); }
+.badge.warranty { background:#4a2f7a; }

@@ -3,52 +3,10 @@
   "txs": [
     {
       "label": "deploy",
-      "hash": "0x496ffe2cb9733e6fe9b9d58be5a6d4b07cc29677bd8577252b85231925159c69",
+      "hash": "0x5da5a607902f31b2eb1525c04fd1b8201bcfb413edfa2a79573a774ba7f72960",
       "status": "5",
       "execution": "SUCCESS",
-      "at": "2026-10-04T08:35:28.528Z"
-    },
-    {
-      "label": "create_bounty(https://whhhh1500.github.io/accessbond/d, Bluebird Bakery order page, [\"button-names\",\"doc-title\",\"form-labels\",\"heading-order\",\"html-lang\",\"img-alt\",\"link-names\",\"zoom-allowed\"], [\"Form error messages tell the user what went wrong and how to fix it (not just 'Error')\"], 120)",
-      "hash": "0xc9e28f3b2d2867e530ad28e97271a3caa45e80deffeefcc5e130f29521d21d1f",
-      "status": "5",
-      "execution": "SUCCESS",
-      "at": "2026-10-04T08:37:41.074Z"
-    },
-    {
-      "label": "submit_fix(0, Added lang, title, alt text, labels, lin)",
-      "hash": "0x00a68370d4b664a341824702fdc42e9125f4ee3b97f2b5c2d388d22e7a6c42fd",
-      "status": "5",
-      "execution": "SUCCESS",
-      "at": "2026-10-04T08:39:38.977Z"
-    },
-    {
-      "label": "create_bounty(https://whhhh1500.github.io/accessbond/d, Bluebird menu page: language, title, alt, [\"html-lang\",\"doc-title\",\"img-alt\"], [], 900)",
-      "hash": "0xf8daefb51f964f59c5b712dc4311c141992b3456d258f714531ff8f50710d1ef",
-      "status": "5",
-      "execution": "SUCCESS",
-      "at": "2026-10-04T08:40:52.532Z"
-    },
-    {
-      "label": "finalize(0)",
-      "hash": "0xf9713bb57ba140977d456541a5bf1334a05c4212ad3617d1d43ea61c7a2c5a37",
-      "status": "5",
-      "execution": "SUCCESS",
-      "at": "2026-10-04T08:41:07.157Z"
-    },
-    {
-      "label": "submit_fix(1, Set lang=en, added a real title and alt )",
-      "hash": "0x5413b8f6c62600f48399b3db0599c4faa5df5ffbc32a6be513743a6d18b42695",
-      "status": "5",
-      "execution": "SUCCESS",
-      "at": "2026-10-04T08:41:53.980Z"
-    },
-    {
-      "label": "dispute(1, The fixes were rolled back right after t)",
-      "hash": "0x8bf6fca8b8b5da5b781f047402eb944ffe59a26e753f41a01387fd549c08d525",
-      "status": "5",
-      "execution": "SUCCESS",
-      "at": "2026-10-04T08:42:58.926Z"
+      "at": "2026-10-11T14:54:48.158Z"
     }
   ],
   "deployer": "0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd",
@@ -119,8 +77,65 @@
         }
       ],
       "why": "renderer served a cached body (Cache-Control) while GET was fresh -> added cache-buster + hunter refresh"
+    },
+    {
+      "contract": "0x86573EFCC588d37E6fD30f40fB4CeA887CB88BfB",
+      "deployTx": "0x496ffe2cb9733e6fe9b9d58be5a6d4b07cc29677bd8577252b85231925159c69",
+      "version": "v0.1.0 (v4)",
+      "why": "v0.2 adds the fix warranty (holdback + check_warranty); create_bounty signature changed",
+      "txs": [
+        {
+          "label": "deploy",
+          "hash": "0x496ffe2cb9733e6fe9b9d58be5a6d4b07cc29677bd8577252b85231925159c69",
+          "status": "5",
+          "execution": "SUCCESS",
+          "at": "2026-10-04T08:35:28.528Z"
+        },
+        {
+          "label": "create_bounty(https://whhhh1500.github.io/accessbond/d, Bluebird Bakery order page, [\"button-names\",\"doc-title\",\"form-labels\",\"heading-order\",\"html-lang\",\"img-alt\",\"link-names\",\"zoom-allowed\"], [\"Form error messages tell the user what went wrong and how to fix it (not just 'Error')\"], 120)",
+          "hash": "0xc9e28f3b2d2867e530ad28e97271a3caa45e80deffeefcc5e130f29521d21d1f",
+          "status": "5",
+          "execution": "SUCCESS",
+          "at": "2026-10-04T08:37:41.074Z"
+        },
+        {
+          "label": "submit_fix(0, Added lang, title, alt text, labels, lin)",
+          "hash": "0x00a68370d4b664a341824702fdc42e9125f4ee3b97f2b5c2d388d22e7a6c42fd",
+          "status": "5",
+          "execution": "SUCCESS",
+          "at": "2026-10-04T08:39:38.977Z"
+        },
+        {
+          "label": "create_bounty(https://whhhh1500.github.io/accessbond/d, Bluebird menu page: language, title, alt, [\"html-lang\",\"doc-title\",\"img-alt\"], [], 900)",
+          "hash": "0xf8daefb51f964f59c5b712dc4311c141992b3456d258f714531ff8f50710d1ef",
+          "status": "5",
+          "execution": "SUCCESS",
+          "at": "2026-10-04T08:40:52.532Z"
+        },
+        {
+          "label": "finalize(0)",
+          "hash": "0xf9713bb57ba140977d456541a5bf1334a05c4212ad3617d1d43ea61c7a2c5a37",
+          "status": "5",
+          "execution": "SUCCESS",
+          "at": "2026-10-04T08:41:07.157Z"
+        },
+        {
+          "label": "submit_fix(1, Set lang=en, added a real title and alt )",
+          "hash": "0x5413b8f6c62600f48399b3db0599c4faa5df5ffbc32a6be513743a6d18b42695",
+          "status": "5",
+          "execution": "SUCCESS",
+          "at": "2026-10-04T08:41:53.980Z"
+        },
+        {
+          "label": "dispute(1, The fixes were rolled back right after t)",
+          "hash": "0x8bf6fca8b8b5da5b781f047402eb944ffe59a26e753f41a01387fd549c08d525",
+          "status": "5",
+          "execution": "SUCCESS",
+          "at": "2026-10-04T08:42:58.926Z"
+        }
+      ]
     }
   ],
-  "contract": "0x86573EFCC588d37E6fD30f40fB4CeA887CB88BfB",
-  "deployTx": "0x496ffe2cb9733e6fe9b9d58be5a6d4b07cc29677bd8577252b85231925159c69"
+  "contract": "0x8Ca1DF2eAc0890Edc819796C9cC8489802608923",
+  "deployTx": "0x5da5a607902f31b2eb1525c04fd1b8201bcfb413edfa2a79573a774ba7f72960"
 }

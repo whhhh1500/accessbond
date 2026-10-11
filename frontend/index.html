@@ -28,6 +28,7 @@
         <li><strong>Hunter</strong> fixes the site and claims. Validators re-fetch, re-check, and agree on a pro-rata payout (fixed − regressions).</li>
         <li><strong>Sponsor</strong> may dispute once in the challenge window: an independent re-evaluation that weighs the sponsor's reason.</li>
         <li><strong>Anyone</strong> finalizes: hunter is paid, the rest is refunded to the sponsor.</li>
+        <li><strong>Fix warranty</strong> (optional): part of the payout is held back. Anyone can ask validators to re-check the paid criteria on the live page; a relapse that is not repaired within the cure period refunds that share to the sponsor, otherwise it is released to the hunter when the warranty ends.</li>
       </ol>
     </section>
 
@@ -81,6 +82,18 @@
             <input name="window" type="number" min="0" max="604800" value="120" required>
           </label>
         </div>
+        <fieldset>
+          <legend>Fix warranty (optional): keep fixes from regressing after payout</legend>
+          <div class="two">
+            <label>Holdback (% of the payout, 0 = off)
+              <input name="holdback" type="number" min="0" max="90" step="1" value="30" required aria-describedby="warranty-hint">
+            </label>
+            <label>Warranty period (seconds)
+              <input name="warranty" type="number" min="0" max="7776000" value="900" required aria-describedby="warranty-hint">
+            </label>
+          </div>
+          <p class="hint" id="warranty-hint">The held-back share is released to the hunter only if the paid criteria still pass when the warranty ends. A relapse gets a cure period (¼ of the warranty, 1 min to 3 days) before its share is refunded to you. Set both to 0 to pay everything at finalize.</p>
+        </fieldset>
         <button type="submit" class="primary">Escrow &amp; create</button>
       </form>
     </section>

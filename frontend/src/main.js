@@ -140,7 +140,8 @@ async function refresh() {
     bounties = plain(list).reverse();
     $("#stats").replaceChildren(
       stat("Bounties", s.count), stat("Escrowed (all time)", fmtGen(s.total_escrowed)), stat("Paid to hunters", fmtGen(s.total_paid)),
-      stat("Open", bounties.filter((b) => b.status === "OPEN").length),
+      stat("Held in escrow", fmtGen(s.held ?? 0n)), stat("Open", bounties.filter((b) => b.status === "OPEN").length),
+      stat("Under warranty", bounties.filter((b) => b.status === "WARRANTY").length),
     );
     renderList();
     if (selected != null) renderDetail(bounties.find((b) => Number(b.id) === selected));
@@ -200,6 +201,13 @@ function renderDetail(b) {
     actions.append(el("button", { class: "primary", type: "button", disabled: windowOpen && !b.disputed ? true : false, onclick: () => send(`finalize #${b.id}`, "finalize", [BigInt(b.id)]) },
       windowOpen && !b.disputed ? `Finalize (window closes ${new Date(Number(b.window_end) * 1000).toLocaleTimeString()})` : "Finalize & pay"));
   }
+  if (b.status === "WARRANTY") {
+    const ended = Number(b.warranty_end) <= now;
+    actions.append(
+      el("p", { class: "hint" }, ended ? "Warranty period is over: a clean check releases the holdback to the hunter." : "Anyone can ask validators to re-check the paid criteria on the live page right now."),
+      el("button", { class: "primary", type: "button", onclick: () => send(`check_warranty #${b.id}`, "check_warranty", [BigInt(b.id)]) }, ended ? "Check & settle warranty" : "Run warranty check"),
+    );
+  }
 
   box.replaceChildren(
     el("div", { class: "row" }, el("h3", {}, `#${b.id} ${b.title}`), badge(b.status)),
@@ -212,12 +220,38 @@ function renderDetail(b) {
       b.hunter ? [el("dt", {}, "Hunter"), el("dd", {}, addrLink(b.hunter), b.hunter_note ? ` — “${b.hunter_note}”` : "")] : null,
       el("dt", {}, "Challenge"), el("dd", {}, `${Number(b.challenge_secs)} s${b.disputed ? " · disputed: “" + b.dispute_reason + "”" : ""}`),
       el("dt", {}, "Created"), el("dd", {}, new Date(Number(b.created_at) * 1000).toLocaleString()),
+      Number(b.holdback_bps) ? [el("dt", {}, "Warranty"), el("dd", {}, warrantySummary(b))] : null,
     ),
+    warrantyLog(b),
     el("table", { class: "report" }, el("caption", {}, "Validator reports"),
       el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "Criterion"), el("th", { scope: "col" }, "Baseline (creation)"), el("th", { scope: "col" }, "Latest evaluation"))),
       el("tbody", {}, rows)),
     actions,
   );
+}
+
+function warrantySummary(b) {
+  const pct = Number(b.holdback_bps) / 100;
+  const parts = [`${pct}% held back for ${Number(b.warranty_secs)} s (cure period ${Number(b.cure_secs)} s)`];
+  if (b.status === "WARRANTY") {
+    parts.push(` · ${fmtGen(b.retained)} held until ${new Date(Number(b.warranty_end) * 1000).toLocaleString()}`);
+    if (Number(b.cure_deadline)) parts.push(` · relapse! repair before ${new Date(Number(b.cure_deadline) * 1000).toLocaleTimeString()}`);
+  }
+  if (big(b.forfeited) > 0n) parts.push(` · ${fmtGen(b.forfeited)} refunded to sponsor after uncured relapses`);
+  return parts.join("");
+}
+
+function warrantyLog(b) {
+  const log = b.warranty_log || [];
+  if (!log.length) return null;
+  return el("table", { class: "report" }, el("caption", {}, "Warranty checks (validators re-fetched the live page)"),
+    el("thead", {}, el("tr", {}, el("th", { scope: "col" }, "When"), el("th", { scope: "col" }, "Outcome"), el("th", { scope: "col" }, "Relapsed criteria"), el("th", { scope: "col" }, "Money moved"))),
+    el("tbody", {}, log.slice().reverse().map((e) => el("tr", {},
+      el("td", {}, new Date(Number(e.at) * 1000).toLocaleString()),
+      el("td", { class: /relapse|forfeit/.test(e.outcome) ? "fail" : "pass" }, e.outcome),
+      el("td", {}, (e.relapsed || []).join(", ") || "—"),
+      el("td", {}, [big(e.released) > 0n ? `${fmtGen(e.released)} → hunter` : "", big(e.forfeit) > 0n ? `${fmtGen(e.forfeit)} → sponsor` : ""].filter(Boolean).join(" · ") || "—"),
+    ))));
 }
 
 // ---------- create ----------
@@ -233,7 +267,9 @@ $("#create").addEventListener("submit", async (ev) => {
   const checks = f.getAll("check");
   const custom = ["c1", "c2", "c3"].map((k) => f.get(k).trim()).filter(Boolean);
   const reward = BigInt(Math.round(Number(f.get("reward")) * 100)) * (GEN / 100n);
-  const ok = await send(`create_bounty "${f.get("title")}"`, "create_bounty", [f.get("url"), f.get("title"), checks, custom, BigInt(f.get("window"))], reward);
+  const holdbackBps = BigInt(Math.round(Number(f.get("holdback") || 0) * 100));
+  const warrantySecs = holdbackBps > 0n ? BigInt(f.get("warranty") || 0) : 0n;
+  const ok = await send(`create_bounty "${f.get("title")}"`, "create_bounty", [f.get("url"), f.get("title"), checks, custom, BigInt(f.get("window")), holdbackBps, warrantySecs], reward);
   if (ok) {
     const me = account.address.toLowerCase();
     const mine = bounties.filter((b) => b.sponsor.toLowerCase() === me).sort((a, b) => Number(b.id) - Number(a.id))[0];

@@ -14,17 +14,17 @@ def _hex(addr) -> str:
     return str(addr).lower()
 
 
-def create(direct_vm, bond, sponsor, checks=ALL, custom=(), reward=10 * GEN, window=3600):
+def create(direct_vm, bond, sponsor, checks=ALL, custom=(), reward=10 * GEN, window=3600, holdback=0, warranty=0):
     direct_vm.sender = sponsor
     direct_vm.value = reward
-    bid = bond.create_bounty(URL, "Bakery order page", list(checks), list(custom), window)
+    bid = bond.create_bounty(URL, "Bakery order page", list(checks), list(custom), window, holdback, warranty)
     direct_vm.value = 0
     return bid
 
 
 def test_catalog_and_empty_state(bond):
     assert set(bond.get_catalog()) == set(ALL)
-    assert bond.get_stats() == {"count": 0, "total_escrowed": 0, "total_paid": 0}
+    assert bond.get_stats() == {"count": 0, "total_escrowed": 0, "total_paid": 0, "total_refunded": 0, "held": 0}
 
 
 def test_create_records_baseline(direct_vm, bond, serve, direct_alice):
@@ -42,16 +42,16 @@ def test_create_validation(direct_vm, bond, serve, direct_alice):
     serve("broken")
     direct_vm.sender = direct_alice
     with direct_vm.expect_revert("escrow some GEN"):
-        bond.create_bounty(URL, "t", ["img-alt"], [], 60)
+        bond.create_bounty(URL, "t", ["img-alt"], [], 60, 0, 0)
     direct_vm.value = GEN
     with direct_vm.expect_revert("unknown checks"):
-        bond.create_bounty(URL, "t", ["color-magic"], [], 60)
+        bond.create_bounty(URL, "t", ["color-magic"], [], 60, 0, 0)
     with direct_vm.expect_revert("url must be http"):
-        bond.create_bounty("ftp://x", "t", ["img-alt"], [], 60)
+        bond.create_bounty("ftp://x", "t", ["img-alt"], [], 60, 0, 0)
     with direct_vm.expect_revert("at least one criterion"):
-        bond.create_bounty(URL, "t", [], [], 60)
+        bond.create_bounty(URL, "t", [], [], 60, 0, 0)
     with direct_vm.expect_revert("challenge window"):
-        bond.create_bounty(URL, "t", ["img-alt"], [], 10**9)
+        bond.create_bounty(URL, "t", ["img-alt"], [], 10**9, 0, 0)
 
 
 def test_nothing_to_fix_is_rejected(direct_vm, bond, serve, direct_alice):
@@ -253,3 +253,149 @@ def test_hunter_can_refresh_claim_but_others_cannot(direct_vm, bond, serve, dire
     with direct_vm.expect_revert("no targeted criterion"):
         bond.submit_fix(bid, "oops")
     assert bond.get_bounty(bid)["payout"] == 8 * GEN
+
+
+# --------------------------------------------------------------------------- #
+# v0.2: fix warranty (holdback + post-payout regression checks)                #
+# --------------------------------------------------------------------------- #
+T0 = "2026-10-11T08:00:00Z"
+
+
+def _warranted(direct_vm, bond, serve, sponsor, hunter, reward=10 * GEN, holdback=4000, warranty=3600, custom=()):
+    """Create -> fix -> finalize with a holdback. Returns the bounty id (now WARRANTY)."""
+    serve("broken", *([False] * len(custom)))
+    direct_vm.warp(T0)
+    bid = create(direct_vm, bond, sponsor, reward=reward, window=0, holdback=holdback, warranty=warranty, custom=custom)
+    serve("fixed", *([True] * len(custom)))
+    direct_vm.sender = hunter
+    bond.submit_fix(bid, "all fixed")
+    bond.finalize(bid)
+    return bid
+
+
+def test_warranty_validation(direct_vm, bond, serve, direct_alice):
+    serve("broken")
+    direct_vm.sender = direct_alice
+    direct_vm.value = GEN
+    with direct_vm.expect_revert("both a holdback and a warranty"):
+        bond.create_bounty(URL, "t", ["img-alt"], [], 60, 3000, 0)
+    with direct_vm.expect_revert("both a holdback and a warranty"):
+        bond.create_bounty(URL, "t", ["img-alt"], [], 60, 0, 600)
+    with direct_vm.expect_revert("holdback must be"):
+        bond.create_bounty(URL, "t", ["img-alt"], [], 60, 9500, 600)
+    with direct_vm.expect_revert("warranty period must be"):
+        bond.create_bounty(URL, "t", ["img-alt"], [], 60, 3000, 10**9)
+
+
+def test_finalize_with_holdback_enters_warranty(direct_vm, bond, serve, direct_alice, direct_bob):
+    bid = _warranted(direct_vm, bond, serve, direct_alice, direct_bob)
+    b = bond.get_bounty(bid)
+    assert b["status"] == "WARRANTY" and b["payout"] == 10 * GEN
+    assert b["retained"] == 4 * GEN  # 40% held back, 6 GEN paid now
+    assert len(b["credited"]) == 8 and b["warranty_end"] == b["claimed_at"] + 3600
+    assert b["cure_secs"] == 900
+    s = bond.get_stats()
+    assert s["total_paid"] == 6 * GEN and s["held"] == 4 * GEN and s["total_refunded"] == 0
+
+
+def test_warranty_check_ok_then_released_after_period(direct_vm, bond, serve, direct_alice, direct_bob, direct_charlie):
+    bid = _warranted(direct_vm, bond, serve, direct_alice, direct_bob)
+    direct_vm.sender = direct_charlie  # anyone can run a check
+    direct_vm.warp("2026-10-11T08:30:00Z")
+    assert bond.check_warranty(bid) == "ok"
+    assert bond.get_bounty(bid)["status"] == "WARRANTY"
+    direct_vm.warp("2026-10-11T09:00:01Z")
+    assert bond.check_warranty(bid) == "released"
+    b = bond.get_bounty(bid)
+    assert b["status"] == "PAID" and b["retained"] == 0 and b["forfeited"] == 0
+    assert [e["outcome"] for e in b["warranty_log"]] == ["ok", "released"]
+    assert b["warranty_log"][-1]["released"] == 4 * GEN
+    s = bond.get_stats()
+    assert s["total_paid"] == 10 * GEN and s["held"] == 0
+    with direct_vm.expect_revert("not under warranty"):
+        bond.check_warranty(bid)
+
+
+def test_relapse_cured_within_cure_period_keeps_holdback(direct_vm, bond, serve, direct_alice, direct_bob):
+    bid = _warranted(direct_vm, bond, serve, direct_alice, direct_bob)
+    serve("partial")  # theme update dropped labels/link names/headings/... (5 of 8 paid checks fail again)
+    direct_vm.warp("2026-10-11T08:10:00Z")
+    direct_vm.sender = direct_alice
+    assert bond.check_warranty(bid) == "relapse"
+    b = bond.get_bounty(bid)
+    assert b["strikes"] == 1 and b["cure_deadline"] == b["warranty_log"][-1]["at"] + 900
+    assert len(b["relapsed"]) == 5 and "form-labels" in b["warranty_log"][-1]["relapsed"]
+    serve("partial")
+    direct_vm.warp("2026-10-11T08:15:00Z")  # still inside the cure period
+    assert bond.check_warranty(bid) == "still-relapsed"
+    serve("fixed")  # hunter restores the fix in time
+    direct_vm.sender = direct_bob
+    assert bond.check_warranty(bid) == "cured"
+    b = bond.get_bounty(bid)
+    assert b["cure_deadline"] == 0 and b["relapsed"] == [] and b["retained"] == 4 * GEN
+    direct_vm.warp("2026-10-11T09:00:00Z")
+    assert bond.check_warranty(bid) == "released"
+
+
+def test_uncured_relapse_forfeits_share_to_sponsor(direct_vm, bond, serve, direct_alice, direct_bob):
+    bid = _warranted(direct_vm, bond, serve, direct_alice, direct_bob, reward=8 * GEN, holdback=5000)
+    assert bond.get_bounty(bid)["retained"] == 4 * GEN
+    serve("partial")  # 5 of the 8 paid checks fail again
+    direct_vm.warp("2026-10-11T08:10:00Z")
+    direct_vm.sender = direct_alice
+    assert bond.check_warranty(bid) == "relapse"
+    direct_vm.warp("2026-10-11T08:25:01Z")  # cure period (900 s) is over, still broken
+    assert bond.check_warranty(bid) == "forfeit"
+    b = bond.get_bounty(bid)
+    assert b["forfeited"] == 4 * GEN * 5 // 8 and b["retained"] == 4 * GEN - 4 * GEN * 5 // 8
+    assert len(b["credited"]) == 3 and b["status"] == "WARRANTY"
+    # the three criteria that held keep their share until the warranty ends
+    direct_vm.warp("2026-10-11T09:00:01Z")
+    assert bond.check_warranty(bid) == "released"
+    s = bond.get_stats()
+    assert s["total_paid"] + s["total_refunded"] == 8 * GEN and s["held"] == 0
+    assert s["total_refunded"] == 4 * GEN * 5 // 8
+
+
+def test_full_relapse_after_period_returns_all_holdback(direct_vm, bond, serve, direct_alice, direct_bob):
+    bid = _warranted(direct_vm, bond, serve, direct_alice, direct_bob)
+    serve("broken")  # site rolled back completely; nobody checked during the warranty
+    direct_vm.warp("2026-10-11T10:00:00Z")  # warranty over: a relapse still gets a cure period
+    assert bond.check_warranty(bid) == "relapse"
+    direct_vm.warp("2026-10-11T10:15:00Z")
+    assert bond.check_warranty(bid) == "forfeit"
+    b = bond.get_bounty(bid)
+    assert b["status"] == "PAID" and b["retained"] == 0 and b["forfeited"] == 4 * GEN and b["credited"] == []
+    s = bond.get_stats()
+    assert s["total_paid"] == 6 * GEN and s["total_refunded"] == 4 * GEN and s["held"] == 0
+
+
+def test_warranty_rechecks_custom_llm_criterion(direct_vm, bond, serve, direct_alice, direct_bob):
+    bid = _warranted(direct_vm, bond, serve, direct_alice, direct_bob, reward=9 * GEN, custom=CUSTOM)
+    assert len(bond.get_bounty(bid)["credited"]) == 9
+    serve("fixed", False)  # markup still passes, but the error copy regressed to "Error"
+    direct_vm.warp("2026-10-11T08:05:00Z")
+    assert bond.check_warranty(bid) == "relapse"
+    assert bond.get_bounty(bid)["warranty_log"][-1]["relapsed"] == ["custom #1"]
+
+
+def test_warranty_validators_disagree_on_different_page(direct_vm, bond, serve, direct_alice, direct_bob):
+    bid = _warranted(direct_vm, bond, serve, direct_alice, direct_bob)
+    serve("fixed")
+    bond.check_warranty(bid)
+    assert direct_vm.run_validator() is True
+    serve("partial")  # a validator that sees a relapsed page must not agree with an "ok" leader
+    assert direct_vm.run_validator() is False
+
+
+def test_no_holdback_is_unchanged_v1_behaviour(direct_vm, bond, serve, direct_alice, direct_bob):
+    serve("broken")
+    bid = create(direct_vm, bond, direct_alice, reward=8 * GEN, window=0)
+    serve("fixed")
+    direct_vm.sender = direct_bob
+    bond.submit_fix(bid, "done")
+    bond.finalize(bid)
+    b = bond.get_bounty(bid)
+    assert b["status"] == "PAID" and b["retained"] == 0 and b["warranty_end"] == 0
+    with direct_vm.expect_revert("not under warranty"):
+        bond.check_warranty(bid)

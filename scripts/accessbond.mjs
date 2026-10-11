@@ -9,10 +9,11 @@
 // usage: node scripts/accessbond.mjs <cmd> [...args]
 //   fund [address] [gen]          free Studio faucet (sim_fundAccount)
 //   deploy
-//   create <url> <title> <checks,comma> <reward GEN> <challenge secs> [custom criterion ...]
+//   create <url> <title> <checks,comma> <reward GEN> <challenge secs> <holdback bps> <warranty secs> [custom criterion ...]
 //   submit <id> <note>
 //   dispute <id> <reason>
 //   finalize <id> | cancel <id>
+//   warranty <id>                 re-check the paid criteria on the live page (anyone)
 //   show <id> | list | stats
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -99,8 +100,8 @@ switch (cmd) {
     break;
   }
   case "create": {
-    const [url, title, checks, reward, secs, ...custom] = a;
-    const r = await write("create_bounty", [url, title, checks ? checks.split(",").filter(Boolean) : [], custom, BigInt(secs)], BigInt(Math.round(Number(reward) * 1e6)) * GEN / 1000000n);
+    const [url, title, checks, reward, secs, holdback, warranty, ...custom] = a;
+    const r = await write("create_bounty", [url, title, checks ? checks.split(",").filter(Boolean) : [], custom, BigInt(secs), BigInt(holdback || 0), BigInt(warranty || 0)], BigInt(Math.round(Number(reward) * 1e6)) * GEN / 1000000n);
     console.log(j(await read("get_stats")));
     break;
   }
@@ -108,6 +109,7 @@ switch (cmd) {
   case "dispute": await write("dispute", [BigInt(a[0]), a[1] || ""]); console.log(j(await read("get_bounty", [BigInt(a[0])]))); break;
   case "finalize": await write("finalize", [BigInt(a[0])]); console.log(j(await read("get_bounty", [BigInt(a[0])]))); break;
   case "cancel": await write("cancel", [BigInt(a[0])]); break;
+  case "warranty": await write("check_warranty", [BigInt(a[0])]); console.log(j(await read("get_bounty", [BigInt(a[0])]))); break;
   case "show": console.log(j(await read("get_bounty", [BigInt(a[0])]))); break;
   case "list": console.log(j(await read("list_bounties"))); break;
   case "stats": console.log(j(await read("get_stats"))); break;

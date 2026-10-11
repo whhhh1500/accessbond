@@ -177,3 +177,34 @@ def test_compact_html_strips_noise_and_truncates(ab):
 def test_cache_busted(ab):
     assert ab.cache_busted("https://a.b/x", 7) == "https://a.b/x?accessbond_ts=7"
     assert ab.cache_busted("https://a.b/x?q=1#top", 7) == "https://a.b/x?q=1&accessbond_ts=7#top"
+
+
+# ---- v0.2 fix-warranty maths ---------------------------------------------- #
+def _rep(checks: dict, custom=()):
+    return {"checks": {k: {"pass": v, "detail": ""} for k, v in checks.items()},
+            "custom": [{"pass": v, "reason": ""} for v in custom]}
+
+
+def test_credited_and_relapsed_indices(ab):
+    base = _rep({"img-alt": False, "html-lang": True, "doc-title": False}, [False])
+    acc = _rep({"img-alt": True, "html-lang": True, "doc-title": False}, [True])
+    # flags order: sorted checks (doc-title, html-lang, img-alt) then custom
+    assert ab.credited_indices(base, acc) == [2, 3]
+    now = _rep({"img-alt": False, "html-lang": False, "doc-title": True}, [True])
+    # html-lang regressed but was never paid for, so it is not a warranty relapse
+    assert ab.relapsed_indices([2, 3], now) == [2]
+    assert ab.flag_names(now) == ["doc-title", "html-lang", "img-alt", "custom #1"]
+
+
+def test_holdback_split_and_forfeit(ab):
+    assert ab.holdback_split(10, 4000) == (6, 4)
+    assert ab.holdback_split(7, 0) == (7, 0)
+    assert ab.holdback_split(3, 3333) == (3, 0)  # rounding favours paying now
+    assert ab.forfeit_amount(4, 5, 8) == 2
+    assert ab.forfeit_amount(4, 8, 8) == 4 and ab.forfeit_amount(4, 9, 8) == 4
+    assert ab.forfeit_amount(4, 0, 8) == 0 and ab.forfeit_amount(4, 1, 0) == 0
+
+
+@pytest.mark.parametrize("w,cure", [(60, 60), (600, 150), (3600, 900), (90 * 86400, 3 * 86400)])
+def test_cure_period_bounds(ab, w, cure):
+    assert ab.cure_period(w) == cure
