@@ -49,6 +49,48 @@
       "status": "5",
       "execution": "SUCCESS",
       "at": "2026-10-11T14:58:07.558Z"
+    },
+    {
+      "label": "check_warranty(1)",
+      "hash": "0x37c6e017b4061f58abce98073630df536183b41dbed7d40acbdcd6c2cba01ab5",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T14:59:23.449Z"
+    },
+    {
+      "label": "check_warranty(0)",
+      "hash": "0x240617868b1d142f6ce405f82a7fd4d813613646d25110a95f4f377c60434192",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T14:59:34.478Z"
+    },
+    {
+      "label": "check_warranty(1)",
+      "hash": "0xde2763a8c1cf7c7d7cc6a19145ac2c7cb1bf442c756129872e863c520296dac1",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T15:01:59.320Z"
+    },
+    {
+      "label": "check_warranty(1)",
+      "hash": "0x7b8a339502ab2e29fb53bbf56aa964c3c864952e9291882909c012cf40840936",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T15:03:42.607Z"
+    },
+    {
+      "label": "check_warranty(0)",
+      "hash": "0x7af18ff331087190357079a7ea3c746ed48d5f7551aa16492be3ada4671c91b3",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T15:13:32.443Z"
+    },
+    {
+      "label": "check_warranty(1)",
+      "hash": "0xad2c9846353b3ee6b72bc29f0c1bd9994ed7677cd3207fba2df4f1f504e90906",
+      "status": "5",
+      "execution": "SUCCESS",
+      "at": "2026-10-11T15:13:39.398Z"
     }
   ],
   "deployer": "0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd",

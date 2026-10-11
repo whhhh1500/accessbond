@@ -1,0 +1,66 @@
+OK  deploy tx 0x5da5a607902f31b2eb1525c04fd1b8201bcfb413edfa2a79573a774ba7f72960
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: null)
+  votes            AGREE×3, IDLE×2
+  from             0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd
+  contract         0x8Ca1DF2eAc0890Edc819796C9cC8489802608923
+OK  call tx 0xcd5f31ebd0cf50afcfe74e9cbd0f8cb9e3d2159c79a477e97ad4f6f1b75b1556
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <1 bytes calldata>)
+  votes            AGREE×3, IDLE×2
+  from             0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd
+OK  call tx 0xa469c21b0edc24d5822344de8d142314f7ebb95738fb2f8fbc013ba2e8fd6f4b
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <1 bytes calldata>)
+  votes            IDLE×2, AGREE×3
+  from             0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd
+OK  call tx 0x7ce8e47044578893399ebe5517d1fa32292fb82fd31ded7b06476eced40c58b3
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: null)
+  votes            AGREE×3, IDLE×2
+  from             0x1FD9471D5292cE68748D395a0aa127Dd4d0b099d
+OK  call tx 0xed65093c499813c248cded6148f52813f764ef1de26d642c20a546c79e4f90de
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: null)
+  votes            AGREE×3, IDLE×2
+  from             0x1FD9471D5292cE68748D395a0aa127Dd4d0b099d
+OK  call tx 0xa8e7aa9587bb593a37b033e501bea06e12cf841267ee9341d47df9678136797e
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: null)
+  votes            AGREE×4, IDLE×1
+  from             0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd
+OK  call tx 0x2ab7711082ef2c7e28882af1ebe84c113523131a5c8d6a856027cb1a65acd9a5
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: null)
+  votes            AGREE×3, IDLE×2
+  from             0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd
+OK  call tx 0x37c6e017b4061f58abce98073630df536183b41dbed7d40acbdcd6c2cba01ab5
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <8 bytes calldata>)
+  votes            IDLE×2, AGREE×3
+  from             0x74c226Af524558b205DEdab6eE908fA438722497
+OK  call tx 0x240617868b1d142f6ce405f82a7fd4d813613646d25110a95f4f377c60434192
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <3 bytes calldata>)
+  votes            AGREE×3, IDLE×2
+  from             0x74c226Af524558b205DEdab6eE908fA438722497
+OK  call tx 0xde2763a8c1cf7c7d7cc6a19145ac2c7cb1bf442c756129872e863c520296dac1
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <15 bytes calldata>)
+  votes            AGREE×3, IDLE×2
+  from             0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd
+OK  call tx 0x7b8a339502ab2e29fb53bbf56aa964c3c864952e9291882909c012cf40840936
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <8 bytes calldata>)
+  votes            IDLE×2, AGREE×3
+  from             0xc7AC1469a8dc7E4df3CE2D646dd6D01296548CEd
+OK  call tx 0x7af18ff331087190357079a7ea3c746ed48d5f7551aa16492be3ada4671c91b3
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <9 bytes calldata>)
+  votes            IDLE×2, AGREE×3
+  from             0x74c226Af524558b205DEdab6eE908fA438722497
+OK  call tx 0xad2c9846353b3ee6b72bc29f0c1bd9994ed7677cd3207fba2df4f1f504e90906
+  status           FINALIZED / MAJORITY_AGREE
+  leader execution SUCCESS  (return: <9 bytes calldata>)
+  votes            AGREE×3, IDLE×2
+  from             0x74c226Af524558b205DEdab6eE908fA438722497

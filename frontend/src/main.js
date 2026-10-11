@@ -15,7 +15,7 @@ let account = null; // { address, client, kind }
 const reader = createClient({ chain: studionet });
 let catalog = {};
 let bounties = [];
-let selected = null;
+let selected = params.get("bounty") != null ? Number(params.get("bounty")) : null; // deep link: ?bounty=<id>
 
 // ---------- helpers ----------
 function plain(v) {
